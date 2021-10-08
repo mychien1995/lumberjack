@@ -9,7 +9,7 @@
           <router-link
             :to="'/applications/create'"
             class="btn btn-primary pull-right"
-            :tag="button"
+            :tag="'button'"
             >Create</router-link
           >
           <DataTable

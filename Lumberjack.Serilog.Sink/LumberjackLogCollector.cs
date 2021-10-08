@@ -5,12 +5,13 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using Serilog.Events;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Lumberjack.Serilog.Sink
 {
@@ -74,48 +75,60 @@ namespace Lumberjack.Serilog.Sink
 
         public void Collect(LogEvent logEvent)
         {
-            if (!ShouldProcess(logEvent)) return;
-            var ev = ToDomainEvent(logEvent);
-            if (ev == null) return;
-            _queue.Enqueue(ev);
+            if (!ShouldProcess(logEvent, out var domainEvent)) return;
+            if (domainEvent == null) return;
+            _queue.Enqueue(domainEvent);
         }
 
-        private bool ShouldProcess(LogEvent logEvent)
+        private bool ShouldProcess(LogEvent logEvent, out ConvertedLogEvent domainEvent)
         {
-            if (!_configuration.Enabled) return false;
-            var level = logEvent.Level;
-            if (level < _configuration.MinimumLevel) return false;
-            var ns = GetNamespace(logEvent);
-            if (string.IsNullOrEmpty(ns)) return true;
-            foreach (var nsConfiguration in _configuration.Namespaces)
-            {
-                if (ns.StartsWith(nsConfiguration.Namespace, StringComparison.OrdinalIgnoreCase))
-                    return !nsConfiguration.Disabled && nsConfiguration.MinimumLevel <= level;
-            }
-            return true;
-        }
-
-        private ConvertedLogEvent ToDomainEvent(LogEvent logEvent)
-        {
+            domainEvent = null;
             try
             {
+                if (!_configuration.Enabled) return false;
+                if (_queue.Count >= _configuration.MaximumQueueSize) return false;
+                var level = logEvent.Level;
+                var message = GetMesssage(logEvent);
+                if (string.IsNullOrWhiteSpace(message)) return false;
                 var ns = GetNamespace(logEvent);
-                var stringBuilder = new StringBuilder();
-                using var stringWriter = new StringWriter(stringBuilder);
-                logEvent.RenderMessage(stringWriter);
+                if (string.IsNullOrEmpty(ns)) return true;
+                var matchingNamespace = false;
+                foreach (var nsConfiguration in _configuration.Namespaces)
+                {
+                    if (!ns.StartsWith(nsConfiguration.Namespace, StringComparison.OrdinalIgnoreCase)) continue;
+                    var shouldExclude = level < _configuration.MinimumLevel || nsConfiguration.MinimumLevel > level ||
+                                        (nsConfiguration.ExcludedText != null &&
+                                         nsConfiguration.ExcludedText.Any(e => e.StartsWith(message)));
+                    var alwaysInclude = nsConfiguration.AlwaysIncludedText != null &&
+                                        nsConfiguration.AlwaysIncludedText.Any(t =>
+                                            message.Contains(t, StringComparison.OrdinalIgnoreCase));
+                    if (nsConfiguration.Disabled || (!alwaysInclude && shouldExclude)) return false;
+                    matchingNamespace = true;
+                }
+                if (!matchingNamespace && level < _configuration.MinimumLevel) return false;
                 var requestContext = GetRequestContext();
-                return new ConvertedLogEvent(logEvent.Timestamp.ToUnixTimeSeconds(), (int)GetLogLevel(logEvent.Level),
-                    ns,
-                    stringBuilder.ToString(),
+                domainEvent = new ConvertedLogEvent(logEvent.Timestamp.ToUnixTimeSeconds(), (int)GetLogLevel(logEvent.Level),
+                    ns, message,
                     requestContext.Item1, requestContext.Item2);
+
+                return true;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error on convert domain event");
-                return null;
+                return false;
             }
         }
 
+        private string GetMesssage(LogEvent logEvent)
+        {
+            var stringBuilder = new StringBuilder();
+            using var stringWriter = new StringWriter(stringBuilder);
+            logEvent.RenderMessage(stringWriter);
+            if (logEvent.Exception != null)
+                stringBuilder.Append($" Exception: {logEvent.Exception}");
+            return stringBuilder.ToString();
+        }
         private (string, string) GetRequestContext()
         {
             var context = _httpContextAccessor;
@@ -127,7 +140,8 @@ namespace Lumberjack.Serilog.Sink
             //using var stream = new StreamReader(currentContext.Request.Body);
             //var body = stream.ReadToEnd();
             var body = currentContext.GetRawBodyString(Encoding.UTF8);
-            requestContext = JsonSerializer.Serialize(new { headers = currentContext.Request.Headers.ToDictionary(k => k.Key, v => v.Value.ToArray()), body });
+            requestContext = JsonConvert.SerializeObject(new
+            { headers = currentContext.Request.Headers.ToDictionary(k => k.Key, v => v.Value.ToArray()), body });
 
             return (request, requestContext);
 

@@ -11,6 +11,7 @@ namespace Lumberjack.Serilog.Sink
         public long SubmitIntervalMs { get; set; }
         public int BatchSize { get; set; }
         public int RequestTimeoutMs { get; set; }
+        public int MaximumQueueSize { get; set; }
         public bool Enabled { get; set; }
         public LogEventLevel MinimumLevel { get; set; }
 
@@ -23,5 +24,7 @@ namespace Lumberjack.Serilog.Sink
         public string Namespace { get; set; }
         public LogEventLevel MinimumLevel { get; set; }
         public bool Disabled { get; set; }
+        public string[] ExcludedText { get; set; } = Array.Empty<string>();
+        public string[] AlwaysIncludedText { get; set; } = Array.Empty<string>();
     }
 }

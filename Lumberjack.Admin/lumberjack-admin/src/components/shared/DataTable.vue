@@ -15,8 +15,17 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(item, index) in displayEntries" :key="index">
+        <tr
+          v-for="(item, index) in displayEntries"
+          :key="index"
+          v-bind:class="rowClass ? rowClass(item) : ''"
+        >
           <td v-for="(column, index) in columns" :key="index">
+            <template v-if="column.Value && column.OnClick">
+              <a @click="column.OnClick(item)" href="#">
+                {{ column.Value ? item[column.Value] : "" }}</a
+              >
+            </template>
             <template v-if="column.Value && !column.Html">
               {{ column.Value ? item[column.Value] : "" }}
             </template>
@@ -24,7 +33,12 @@
               <div class="clamp">{{ item[column.Value] }}</div>
             </template>
             <template v-if="column.Render">
-              {{ column.Render(item) }}
+              <a v-if="column.OnClick" @click="column.OnClick(item)" href="javascript:void(0)">
+                {{ column.Render(item) }}
+              </a>
+              <template v-if="!column.OnClick">
+                {{ column.Render(item) }}
+              </template>
             </template>
             <template v-if="column.Action">
               <template v-for="(action, index) in column.Action(item)">
@@ -80,6 +94,7 @@ export default {
     columns: Array,
     entries: Array,
     total: Number,
+    rowClass: Function,
     tableClass: String,
     serverSide: {
       default: false,

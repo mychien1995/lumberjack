@@ -13,19 +13,31 @@
     </div>
     <div class="sidebar-wrapper">
       <ul class="nav">
-        <li class="active">
+        <li
+          v-bind:class="
+            !currentRoute || currentRoute == 'Dashboard' ? 'active' : ''
+          "
+        >
           <router-link :to="'/'">
             <i class="nc-icon nc-bank"></i>
             <p>Dashboard</p>
           </router-link>
         </li>
-        <li>
+        <li
+          v-bind:class="
+            currentRoute && currentRoute.indexOf('Application') > -1
+              ? 'active'
+              : ''
+          "
+        >
           <router-link :to="'/applications'">
             <i class="nc-icon nc-tile-56"></i>
             <p>Applications</p>
           </router-link>
         </li>
-        <li>
+        <li
+          v-bind:class="currentRoute && currentRoute == 'Logs' ? 'active' : ''"
+        >
           <router-link :to="'/logs'">
             <i class="nc-icon nc-map-big"></i>
             <p>Log Viewer</p>
@@ -45,5 +57,10 @@
 <script>
 export default {
   name: "Sidebar",
+  computed: {
+    currentRoute() {
+      return this.$route.name;
+    },
+  },
 };
 </script>
