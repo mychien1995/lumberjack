@@ -26,8 +26,8 @@
       </div>
       <div class="form-group" v-if="logItem?.Namespace">
         <label>Namespace</label>:
-        <div>
-          <div>{{ logItem?.Namespace }}</div>
+        <div style="overflow: hidden; text-overflow: ellipsis" v-bind:title="logItem?.Namespace">
+          {{ logItem?.Namespace }}
         </div>
       </div>
       <div class="form-group" v-if="logItem?.Request">
