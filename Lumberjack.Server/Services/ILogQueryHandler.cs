@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Linq;
+using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
-using Lumberjack.Server.Entities;
 using Lumberjack.Server.Models;
 using Lumberjack.Server.Models.Common;
-using Microsoft.EntityFrameworkCore;
-using TanvirArjel.EFCore.GenericRepository;
+using Microsoft.Data.SqlClient;
 
 namespace Lumberjack.Server.Services
 {
@@ -16,37 +15,47 @@ namespace Lumberjack.Server.Services
 
     public class LogQueryHandler : ILogQueryHandler
     {
-        private readonly IRepository _repository;
+        private readonly IDbConnectionFactory _dbConnectionFactory;
+        private readonly IShardManager _shardManager;
 
-        public LogQueryHandler(IRepository repository)
+        public LogQueryHandler(IDbConnectionFactory dbConnectionFactory, IShardManager shardManager)
         {
-            _repository = repository;
+            _dbConnectionFactory = dbConnectionFactory;
+            _shardManager = shardManager;
         }
 
         public async Task<SearchResult<LogEntry>> Query(LogsQuery query)
         {
-            var baseQuery = _repository.GetQueryable<LogData>().AsNoTracking();
-            if (!string.IsNullOrEmpty(query.Text))
+            var tableName = !string.IsNullOrEmpty(query.TableName)
+                ? query.TableName
+                : _shardManager.CurrentShard().TableName;
+            var connection = _dbConnectionFactory.GetConnection();
+            var command = new SqlCommand("dbo.QueryLogs", connection);
+            command.Parameters.Add(new SqlParameter("@TableName", SqlDbType.VarChar, 200) { Value = tableName });
+            command.Parameters.Add(new SqlParameter("@Text", SqlDbType.NVarChar, -1) { Value = (object)query.Text ?? DBNull.Value});
+            command.Parameters.Add(new SqlParameter("@ApplicationId", SqlDbType.UniqueIdentifier) { Value = (object)query.ApplicationId ?? DBNull.Value });
+            command.Parameters.Add(new SqlParameter("@LogLevel", SqlDbType.Int) { Value = (object)query.LogLevel ?? DBNull.Value });
+            command.Parameters.Add(new SqlParameter("@StartTime", SqlDbType.BigInt) { Value = (object)query.StartTime ?? DBNull.Value });
+            command.Parameters.Add(new SqlParameter("@EndTime", SqlDbType.BigInt) { Value = (object)query.EndTime ?? DBNull.Value });
+            command.Parameters.Add(new SqlParameter("@Skip", SqlDbType.Int) { Value = (object)((query.PageIndex - 1) * query.PageSize) ?? DBNull.Value });
+            command.Parameters.Add(new SqlParameter("@Take", SqlDbType.Int) { Value = (object)query.PageSize ?? DBNull.Value });
+            command.CommandType = CommandType.StoredProcedure;
+            var reader = await command.ExecuteReaderAsync();
+            long total = 0;
+            var data = new List<LogEntry>();
+            while (reader.Read())
+                total = reader.GetInt32(0);
+            reader.NextResult();
+            while (reader.Read())
             {
-                var text = query.Text.Trim();
-                baseQuery = baseQuery.Where(l => l.Message.Contains(text));
+                var logEntry = new LogEntry(reader.GetGuid(0), reader.GetDateTime(1), reader.GetInt64(2),
+                    (SystemLogLevel)reader.GetInt32(3)
+                    , reader.GetString(4), reader.GetString(5), reader.GetString(6), reader.GetString(7),
+                    reader.GetGuid(8),
+                    reader.GetString(9));
+                data.Add(logEntry);
             }
-            if (query.ApplicationId.HasValue)
-                baseQuery = baseQuery.Where(l => l.ApplicationId == query.ApplicationId);
-            if (query.LogLevel.HasValue)
-                baseQuery = baseQuery.Where(l => l.LogLevel == query.LogLevel);
-            if (!string.IsNullOrEmpty(query.Instance))
-                baseQuery = baseQuery.Where(l => l.Instance == query.Instance);
-            if (query.StartTime.HasValue)
-                baseQuery = baseQuery.Where(l => l.Timestamp >= query.StartTime);
-            if (query.EndTime.HasValue)
-                baseQuery = baseQuery.Where(l => l.Timestamp <= query.EndTime);
-            var total = await baseQuery.CountAsync();
-            baseQuery = baseQuery.OrderByDescending(q => q.Timestamp).Skip((query.PageIndex - 1) * query.PageSize).Take(query.PageSize);
-            var data = (await baseQuery.ToListAsync()).Select(l => new LogEntry(l.Id, l.CreateDate, l.Timestamp!.Value,
-                (SystemLogLevel)l.LogLevel, l.Namespace,
-                l.Message, l.Request, l.RequestContext, l.ApplicationId ?? Guid.Empty, l.Instance)).ToArray();
-            return new SearchResult<LogEntry>(total, data);
+            return new SearchResult<LogEntry>(total, data.ToArray());
         }
     }
 }

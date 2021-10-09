@@ -40,8 +40,9 @@ namespace Lumberjack.Server
                 new DefaultContractResolver
                 {
                     NamingStrategy = null
-                });
+                }); 
             services.Configure<WorkerOption>(Configuration.GetSection("WorkerOption"));
+            services.Configure<ShardOption>(Configuration.GetSection("ShardOption"));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

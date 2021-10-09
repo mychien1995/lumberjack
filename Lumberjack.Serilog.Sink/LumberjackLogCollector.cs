@@ -67,7 +67,12 @@ namespace Lumberjack.Serilog.Sink
                 {
                     _logger.LogError(ex, "Error on submit logs");
                     _failedAttempt++;
-                    if (_failedAttempt >= 10) break;
+                }
+
+                if (_failedAttempt > 10)
+                {
+                    _logger.LogError("Temporary disable log colletor for 5 minutes");
+                    Thread.Sleep(300000);
                 }
                 Thread.Sleep((int)_configuration.SubmitIntervalMs);
             }

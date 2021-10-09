@@ -80,6 +80,21 @@
                   ></Datepicker>
                 </div>
               </div>
+              <div class="col-md-3">
+                <div class="form-group">
+                  <select class="form-control" v-model="query.TableName">
+                    <option
+                      v-for="(item, index) of shards"
+                      :key="index"
+                      v-bind:value="item.TableName"
+                    >
+                      Shard {{ item.Number }}
+                      {{ item.IsCurrent ? " (current)" : "" }}
+                      {{ formatTime(item.CreatedDate) }}
+                    </option>
+                  </select>
+                </div>
+              </div>
             </div>
             <div class="row">
               <div class="col-md-12">
@@ -119,6 +134,7 @@ import DataTable from "@components/shared/DataTable";
 import LogDetailDialog from "./LogDetailDialog.vue";
 import { ref, reactive } from "vue";
 import ApplicationService from "@services/applications.service";
+import ShardsService from "@services/shards.service";
 import LogsQueryService from "@services/logs.service";
 import LayoutService from "@services/layout.service";
 import NotificationService from "@services/notification.service";
@@ -130,6 +146,7 @@ export default {
   setup() {
     let rows = ref([]);
     let applications = ref([]);
+    let shards = ref([]);
     let showModal = ref(false);
     let currentItem = ref(null);
     let total = ref(0);
@@ -144,13 +161,22 @@ export default {
       LogLevel: null,
       StartTime: null,
       EndTime: null,
+      TableName: null,
     });
     getApplications();
-    loadData();
+    getShardsAndLoadData();
 
     function getApplications() {
       ApplicationService.getAll().then((response) => {
         applications.value = response.data.Data.Data;
+      });
+    }
+
+    function getShardsAndLoadData() {
+      ShardsService.getAll().then((response) => {
+        shards.value = response.data.Data;
+        query.TableName = shards.value[0].TableName;
+        loadData();
       });
     }
 
@@ -179,10 +205,12 @@ export default {
     return {
       rows,
       applications,
+      shards,
       total,
       query,
       loadData,
       getApplications,
+      getShardsAndLoadData,
       previewDate,
       startTime,
       endTime,
@@ -199,6 +227,11 @@ export default {
     showDetail: function (item) {
       this.showModal = true;
       this.currentItem = item;
+    },
+    formatTime(timestamp) {
+      if (!timestamp) return "";
+      const utcDate = new Date(timestamp * 1000);
+      return moment(utcDate).format("DD/MM/YYYY HH:mm:ss");
     },
   },
   data() {

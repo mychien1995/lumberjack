@@ -28,6 +28,8 @@ namespace Lumberjack.Server.Extensions
             TinyMapper.Bind<ApiKey, ApiKeyModel>();
             TinyMapper.Bind<ApplicationInstanceModel, ApplicationInstance>();
             TinyMapper.Bind<ApplicationInstance, ApplicationInstanceModel>();
+            TinyMapper.Bind<ShardModel, Shard>();
+            TinyMapper.Bind<Shard, ShardModel>();
             return collection;
         }
 
@@ -55,7 +57,9 @@ namespace Lumberjack.Server.Extensions
             collection.AddSingleton<IApplicationCache, ApplicationCache>();
             collection.AddSingleton<ILogReceiver, LogReceiver>();
             collection.AddSingleton<ILogWorkerPool, LogWorkerPool>();
+            collection.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
             collection.AddTransient<ILogQueryHandler, LogQueryHandler>();
+            collection.AddSingleton<IShardManager, ShardManager>();
             return collection;
         }
 
@@ -63,6 +67,8 @@ namespace Lumberjack.Server.Extensions
         {
             var applicationCache = app.ApplicationServices.GetService<IApplicationCache>();
             applicationCache!.Initialize();
+            var shardManager = app.ApplicationServices.GetService<IShardManager>();
+            shardManager!.Initialize();
             var workerPool = app.ApplicationServices.GetService<ILogWorkerPool>();
             workerPool!.Start();
         }

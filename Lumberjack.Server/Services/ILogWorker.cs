@@ -7,7 +7,6 @@ using System.Threading;
 using Lumberjack.Server.Entities;
 using Lumberjack.Server.Models;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -28,12 +27,14 @@ namespace Lumberjack.Server.Services
         private readonly ILogger<LogWorker> _logger;
         private readonly WorkerOption _workerOption;
         private readonly ConcurrentQueue<LogEntry> _queue = new();
-        private readonly string _connectionString;
-        public LogWorker(ILogger<LogWorker> logger, IOptionsMonitor<WorkerOption> workerOptions, IConfiguration configuration, int workerId)
+        private readonly IDbConnectionFactory _dbConnectionFactory;
+        private readonly IShardManager _shardManager;
+        public LogWorker(ILogger<LogWorker> logger, IOptionsMonitor<WorkerOption> workerOptions, IDbConnectionFactory dbConnectionFactory, int workerId, IShardManager shardManager)
         {
             WorkerId = workerId;
+            _shardManager = shardManager;
             _logger = logger;
-            _connectionString = configuration.GetConnectionString("Default");
+            _dbConnectionFactory = dbConnectionFactory;
             _dedicatedThread = new Thread(SaveData)
             {
                 Name = $"log-worker-{workerId}"
@@ -70,21 +71,24 @@ namespace Lumberjack.Server.Services
 
                     if (batch.Any())
                     {
+                        var dataTable = ToDataTable(batch);
+                        var connection = _dbConnectionFactory.GetConnection();
                         try
                         {
-                            using var connection = new SqlConnection(_connectionString);
-                            var commandText = "INSERT INTO  dbo.LogDatas SELECT * FROM @logs";
+                            var currentShard = _shardManager.CurrentShard();
+                            var commandText = $"INSERT INTO  {currentShard.TableName} SELECT * FROM @logs";
                             var command = new SqlCommand(commandText, connection);
-                            var param = command.Parameters.AddWithValue("@logs", ToDataTable(batch));
+                            var param = command.Parameters.AddWithValue("@logs", dataTable);
                             param.TypeName = "dbo.LogDatasType";
-                            if (connection.State != ConnectionState.Open)
-                                connection.Open();
-                            command.ExecuteNonQuery();
-                            connection.Dispose();
+                            command.ExecuteNonQuery();;
                         }
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, $"Worker {WorkerId} - error on executing insert");
+                        }
+                        finally
+                        {
+                            connection.Dispose();
                         }
                     }
                 }

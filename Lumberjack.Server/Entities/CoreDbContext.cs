@@ -1,9 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Lumberjack.Server.Entities;
 
 #nullable disable
 
-// ReSharper disable once CheckNamespace
 namespace Lumberjack.Server
 {
     public partial class CoreDbContext : DbContext
@@ -18,6 +19,7 @@ namespace Lumberjack.Server
         public virtual DbSet<Application> Applications { get; set; }
         public virtual DbSet<ApplicationInstance> ApplicationInstances { get; set; }
         public virtual DbSet<LogData> LogDatas { get; set; }
+        public virtual DbSet<Shard> Shards { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -93,6 +95,15 @@ namespace Lumberjack.Server
 
                 entity.Property(e => e.Request)
                     .HasMaxLength(2000)
+                    .IsUnicode(false);
+            });
+
+            modelBuilder.Entity<Shard>(entity =>
+            {
+                entity.Property(e => e.ShardId).ValueGeneratedNever();
+
+                entity.Property(e => e.TableName)
+                    .HasMaxLength(200)
                     .IsUnicode(false);
             });
 

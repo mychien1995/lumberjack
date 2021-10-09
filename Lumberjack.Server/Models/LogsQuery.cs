@@ -13,6 +13,7 @@ namespace Lumberjack.Server.Models
         public long? EndTime { get; set; }
         public int PageIndex { get; set; } = 1;
         public int PageSize { get; set; } = 100;
+        public string TableName { get; set; }
 
     }
 }
