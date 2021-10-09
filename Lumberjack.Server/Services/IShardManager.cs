@@ -70,7 +70,7 @@ namespace Lumberjack.Server.Services
             }
             while (true)
             {
-                if (!_initialized) return;
+                if (!_initialized) continue;
                 DoScale(); 
                 Thread.Sleep(_configuration.AutoScaleInterval);
             }
