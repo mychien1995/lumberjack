@@ -73,6 +73,7 @@ namespace Lumberjack.Serilog.Sink
                 {
                     _logger.LogError("Temporary disable log colletor for 5 minutes");
                     Thread.Sleep(300000);
+                    _failedAttempt = 0;
                 }
                 Thread.Sleep((int)_configuration.SubmitIntervalMs);
             }

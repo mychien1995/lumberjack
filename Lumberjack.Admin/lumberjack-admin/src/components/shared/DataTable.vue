@@ -33,7 +33,11 @@
               <div class="clamp">{{ item[column.Value] }}</div>
             </template>
             <template v-if="column.Render">
-              <a v-if="column.OnClick" @click="column.OnClick(item)" href="javascript:void(0)">
+              <a
+                v-if="column.OnClick"
+                @click="column.OnClick(item)"
+                href="javascript:void(0)"
+              >
                 {{ column.Render(item) }}
               </a>
               <template v-if="!column.OnClick">
@@ -119,7 +123,10 @@ export default {
       this.pageIndex = index;
       emit("moveTo", this.pageIndex);
     }
-    return { pageIndex, next, prev, moveTo };
+    function reset(pageIndex) {
+      this.pageIndex = pageIndex;
+    }
+    return { pageIndex, next, prev, moveTo, reset };
   },
   computed: {
     displayEntries() {

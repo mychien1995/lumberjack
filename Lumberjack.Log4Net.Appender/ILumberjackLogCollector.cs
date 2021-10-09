@@ -72,6 +72,7 @@ namespace Lumberjack.Log4Net.Appender
                 {
                     Log.Error("Temporary disable log colletor for 5 minutes", this);
                     Thread.Sleep(300000);
+                    _failedAttempt = 0;
                 }
                 Thread.Sleep((int)_configuration.SubmitIntervalMs);
             }

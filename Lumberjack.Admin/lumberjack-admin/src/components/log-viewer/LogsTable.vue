@@ -101,8 +101,12 @@
                 <button type="submit" class="btn btn-primary pull-right">
                   Search
                 </button>
-                <button type="button" @click="toPaging" class="mr-3 btn btn-info pull-right">
-                  To Paging 😁
+                <button
+                  type="button"
+                  @click="toPaging"
+                  class="mr-3 btn btn-info pull-right"
+                >
+                  To Bottom 😁
                 </button>
               </div>
             </div>
@@ -118,6 +122,7 @@
             @moveTo="loadData"
             :rowClass="renderRowClass"
             :serverSide="true"
+            ref="table"
           ></DataTable>
         </div>
       </div>
@@ -155,6 +160,7 @@ export default {
     let total = ref(0);
     let startTime = ref(null);
     let endTime = ref(null);
+    let table = ref(null);
     let query = reactive({
       PageIndex: 1,
       PageSize: 100,
@@ -189,6 +195,7 @@ export default {
     }
     function loadData(pageIndex = 1) {
       query.PageIndex = pageIndex;
+      table.value.reset(pageIndex);
       if (startTime.value) query.StartTime = startTime.value.getTime() / 1000;
       else query.StartTime = null;
       if (endTime.value) query.EndTime = endTime.value.getTime() / 1000;
@@ -217,6 +224,7 @@ export default {
       previewDate,
       startTime,
       endTime,
+      table,
       showModal,
       currentItem,
     };
