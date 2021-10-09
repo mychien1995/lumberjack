@@ -101,6 +101,9 @@
                 <button type="submit" class="btn btn-primary pull-right">
                   Search
                 </button>
+                <button type="button" @click="toPaging" class="mr-3 btn btn-info pull-right">
+                  To Paging 😁
+                </button>
               </div>
             </div>
           </form>
@@ -232,6 +235,9 @@ export default {
       if (!timestamp) return "";
       const utcDate = new Date(timestamp * 1000);
       return moment(utcDate).format("DD/MM/YYYY HH:mm:ss");
+    },
+    toPaging() {
+      window.scrollTo(0, document.body.scrollHeight);
     },
   },
   data() {
