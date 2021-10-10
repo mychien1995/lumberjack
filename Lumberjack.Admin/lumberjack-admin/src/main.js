@@ -4,9 +4,10 @@ import router from "./router";
 import ApiService from './services/api.service';
 import NotificationService from './services/notification.service';
 import VueToast from 'vue-toast-notification';
-import { vfmPlugin } from 'vue-final-modal'
+import { vfmPlugin } from 'vue-final-modal';
+import VueSSE from 'vue-sse';
 
-const app = createApp(App).use(router).use(VueToast).use(vfmPlugin);
+const app = createApp(App).use(router).use(VueToast).use(vfmPlugin).use(VueSSE);
 ApiService.init();
 NotificationService.init(app);
 app.mount('#app');

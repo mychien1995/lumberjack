@@ -8,7 +8,7 @@ module.exports = {
     mode: 'production',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        publicPath: ''
+        publicPath: '/'
     },
     optimization: {
         splitChunks: {

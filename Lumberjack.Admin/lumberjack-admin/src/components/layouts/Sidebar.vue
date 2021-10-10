@@ -43,11 +43,15 @@
             <p>Log Viewer</p>
           </router-link>
         </li>
-        <li>
-          <a href="">
+        <li
+          v-bind:class="
+            currentRoute && currentRoute == 'Stream' ? 'active' : ''
+          "
+        >
+          <router-link :to="'/stream'">
             <i class="nc-icon nc-sound-wave"></i>
             <p>Log Stream</p>
-          </a>
+          </router-link>
         </li>
       </ul>
     </div>

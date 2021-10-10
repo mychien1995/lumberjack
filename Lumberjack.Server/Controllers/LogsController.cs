@@ -1,8 +1,14 @@
 ﻿using System;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Lumberjack.Server.Models;
 using Lumberjack.Server.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+// ReSharper disable MethodSupportsCancellation
 
 namespace Lumberjack.Server.Controllers
 {
@@ -34,6 +40,31 @@ namespace Lumberjack.Server.Controllers
                 InputValidationResult.LOG_EMPTY => BadRequest("LOGS EMPTY"),
                 _ => BadRequest()
             };
+        }
+
+        [HttpGet("source")]
+        public async Task GetSource(CancellationToken token)
+        {
+            var response = Response;
+            response.StatusCode = 200;
+            response.Headers.Add("Content-Type", "text/event-stream");
+
+            async void OnLogReceived(object sender, MessageReceivedEventArg arg)
+            {
+                var log = arg.Log;
+                await response.WriteAsync($"data:{JsonConvert.SerializeObject(log)}\n\n");
+                await response.Body.FlushAsync();
+            }
+
+            _logReceiver.OnMessageReceived += OnLogReceived;
+            while (!token.IsCancellationRequested)
+                await Task.Delay(1000);
+            _logReceiver.OnMessageReceived -= OnLogReceived;
+        }
+
+        private void _logReceiver_OnMessageReceived(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
         }
 
         public class LogRequestInput
